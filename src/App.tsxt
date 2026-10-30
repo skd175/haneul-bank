@@ -1,0 +1,383 @@
+
+import React, { useState } from 'react';
+import { 
+  ShieldCheck, ArrowRight, ArrowUpRight, ArrowDownLeft, Wallet, 
+  CreditCard, PieChart, Send, Settings, Bell, Search, Menu, X, 
+  Globe, Lock, CheckCircle2, ChevronRight, Eye, EyeOff, LogOut,
+  Building, Sparkles, Calculator, PlusCircle, Smartphone, ShieldAlert
+} from 'lucide-react';
+import { 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer 
+} from 'recharts';
+
+type Language = 'ko' | 'en';
+type ActiveTab = 'home' | 'dashboard' | 'transfer' | 'cards' | 'savings' | 'loans' | 'admin' | 'login' | 'register';
+
+interface UserAccount {
+  id: string;
+  name: string;
+  phone: string;
+  accountNumber: string;
+  balance: number;
+  savingsBalance: number;
+}
+
+interface Transaction {
+  id: string;
+  type: 'send' | 'receive' | 'payment' | 'admin_deposit';
+  counterparty: string;
+  category: string;
+  amount: number;
+  date: string;
+  time: string;
+  account: string;
+}
+
+const INITIAL_USERS: UserAccount[] = [
+  { id: 'usr-1', name: '김하늘 (Haneul Kim)', phone: '010-8829-1928', accountNumber: '1002-882-918273', balance: 14820500, savingsBalance: 25000000 },
+  { id: 'usr-2', name: '박지성 (Jisung Park)', phone: '010-1234-5678', accountNumber: '1002-111-223344', balance: 3500000, savingsBalance: 5000000 },
+  { id: 'usr-3', name: '이서연 (Seoyeon Lee)', phone: '010-9876-5432', accountNumber: '1002-999-887766', balance: 820000, savingsBalance: 1200000 },
+];
+
+const INITIAL_TRANSACTIONS: Transaction[] = [
+  { id: 'tx-1', type: 'receive', counterparty: '김민준 (Kim Min-jun)', category: '급여 (Salary)', amount: 4250000, date: '2026-10-30', time: '09:15', account: '주거래 자유예금' },
+  { id: 'tx-2', type: 'payment', counterparty: '스타벅스 강남점 (Starbucks)', category: '식품/카페 (Food & Cafe)', amount: 6100, date: '2026-10-29', time: '14:22', account: '하늘 체크카드' },
+];
+
+export default function HaneulBankApp() {
+  const [lang, setLang] = useState<Language>('ko');
+  const [currentTab, setCurrentTab] = useState<ActiveTab>('home');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [balanceVisible, setBalanceVisible] = useState<boolean>(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Central Database State
+  const [users, setUsers] = useState<UserAccount[]>(INITIAL_USERS);
+  const [currentUserIndex, setCurrentUserIndex] = useState<number>(0); // Default to Haneul Kim
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+
+  // Admin Funding State
+  const [selectedTargetUserId, setSelectedTargetUserId] = useState<string>(INITIAL_USERS[0].id);
+  const [fundingAmount, setFundingAmount] = useState<string>('');
+  const [fundingMemo, setFundingMemo] = useState<string>('관리자 직접 충전 (Admin Deposit)');
+
+  // Transfer Form & PIN State
+  const [transferBank, setTransferBank] = useState('국민은행 (KB Kookmin)');
+  const [transferAccount, setTransferAccount] = useState('1002-882-918273');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferStep, setTransferStep] = useState<'input' | 'pin' | 'success'>('input');
+  const [pinCode, setPinCode] = useState('');
+
+  const activeUser = users[currentUserIndex];
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const formatKRW = (amount: number) => '₩' + amount.toLocaleString('ko-KR');
+
+  const handleAdminFundUser = () => {
+    const amountNum = Number(fundingAmount);
+    if (!amountNum || amountNum <= 0) {
+      showToast('올바른 충전 금액을 입력해주세요.');
+      return;
+    }
+
+    setUsers(prevUsers => prevUsers.map(u => {
+      if (u.id === selectedTargetUserId) {
+        return { ...u, balance: u.balance + amountNum };
+      }
+      return u;
+    }));
+
+    setTransactions(prev => [
+      {
+        id: 'tx-admin-' + Date.now(),
+        type: 'admin_deposit',
+        counterparty: '하늘은행 관리자 (Bank Admin)',
+        category: fundingMemo,
+        amount: amountNum,
+        date: '2026-10-30',
+        time: '05:47',
+        account: '주거래 자유예금'
+      },
+      ...prev
+    ]);
+
+    showToast(`성공적으로 ${formatKRW(amountNum)}을 해당 계좌에 충전했습니다.`);
+    setFundingAmount('');
+  };
+
+  const t = {
+    ko: {
+      brand: '하늘은행',
+      tagline: '더 나은 금융, 당신의 일상 속으로',
+      personalBanking: '개인뱅킹',
+      cards: '카드',
+      loans: '대출',
+      savings: '예금·적금',
+      adminPortal: '관리자 센터 (Admin)',
+      login: '로그인',
+      logout: '로그아웃',
+      dashboard: '자산현황',
+      transfer: '송금하기',
+      totalBalance: '총 보유 자산',
+      recentTx: '최근 거래 내역',
+      copyright: '© 2026 HANEUL BANK Corp. All rights reserved. Republic of Korea.',
+    },
+    en: {
+      brand: 'HANEUL BANK',
+      tagline: 'Better banking, into your everyday life',
+      personalBanking: 'Personal',
+      cards: 'Cards',
+      loans: 'Loans',
+      savings: 'Savings',
+      adminPortal: 'Admin Portal',
+      login: 'Sign In',
+      logout: 'Sign Out',
+      dashboard: 'Dashboard',
+      transfer: 'Transfer',
+      totalBalance: 'Total Net Worth',
+      recentTx: 'Recent Transactions',
+      copyright: '© 2026 HANEUL BANK Corp. All rights reserved. Republic of Korea.',
+    }
+  }[lang];
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-600 selection:text-white antialiased">
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-bounce">
+          <Sparkles className="w-5 h-5 text-sky-400" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* --- NAVIGATION BAR --- */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div onClick={() => setCurrentTab('home')} className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+              <Building className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-xl font-bold tracking-tight text-slate-900">{lang === 'ko' ? '하늘은행' : 'HANEUL'}</span>
+              <span className="block text-[10px] font-semibold uppercase tracking-widest text-blue-600">HANEUL BANK</span>
+            </div>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+            <button onClick={() => setCurrentTab('home')} className="hover:text-blue-600">{t.personalBanking}</button>
+            <button onClick={() => setCurrentTab('dashboard')} className="hover:text-blue-600">{t.dashboard}</button>
+            <button onClick={() => setCurrentTab('savings')} className="hover:text-blue-600">{t.savings}</button>
+            <button onClick={() => setCurrentTab('loans')} className="hover:text-blue-600">{t.loans}</button>
+            
+            {/* ADMIN LINK BUTTON */}
+            <button 
+              onClick={() => setCurrentTab('admin')} 
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold hover:bg-amber-100 transition-colors"
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              {t.adminPortal}
+            </button>
+          </nav>
+
+          <div className="hidden md:flex items-center gap-4">
+            <button onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+              <Globe className="w-3.5 h-3.5 text-blue-600" />
+              {lang === 'ko' ? 'English' : '한국어'}
+            </button>
+            {isAuthenticated ? (
+              <button onClick={() => { setIsAuthenticated(false); setCurrentTab('home'); showToast('로그아웃 되었습니다.'); }} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium">
+                <LogOut className="w-4 h-4" /> {t.logout}
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                <button onClick={() => setCurrentTab('login')} className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-blue-600">{t.login}</button>
+                <button onClick={() => setCurrentTab('register')} className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-semibold shadow-lg shadow-blue-600/25">{t.tagline ? '계좌 개설하기' : 'Open Account'}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* --- VIEWS --- */}
+      {currentTab === 'home' && (
+        <main className="py-20 text-center max-w-4xl mx-auto px-4 space-y-8">
+          <span className="px-3.5 py-1.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold">대한민국 1위 디지털 혁신 은행</span>
+          <h1 className="text-4xl sm:text-6xl font-extrabold text-slate-900 tracking-tight">{t.tagline}</h1>
+          <p className="text-slate-600 text-lg">스마트폰 하나로 간편하게 시작하는 프리미엄 모바일 금융 서비스.</p>
+          <div className="flex justify-center gap-4">
+            <button onClick={() => setCurrentTab('dashboard')} className="px-8 py-4 rounded-2xl bg-blue-600 text-white font-bold shadow-xl shadow-blue-600/30">내 계좌 보기</button>
+            <button onClick={() => setCurrentTab('admin')} className="px-8 py-4 rounded-2xl bg-amber-500 text-white font-bold shadow-xl shadow-amber-500/30">관리자 센터 열기</button>
+          </div>
+        </main>
+      )}
+
+      {/* --- SEPARATE ADMIN PORTAL VIEW --- */}
+      {currentTab === 'admin' && (
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
+          <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest mb-1">
+                <ShieldAlert className="w-4 h-4" /> HANEUL BANK SECURE MASTER ADMIN PANEL
+              </div>
+              <h1 className="text-3xl font-extrabold">관리자 전용 자금 충전 및 계좌 관리</h1>
+              <p className="text-slate-400 text-xs mt-1">웹사이트에 가입한 모든 고객의 계좌를 조회하고, 실시간으로 자금을 충전(입금)할 수 있습니다.</p>
+            </div>
+            <button onClick={() => setCurrentTab('dashboard')} className="px-5 py-2.5 rounded-xl bg-slate-800 text-xs font-bold border border-slate-700 hover:bg-slate-700">
+              사용자 화면으로 돌아가기
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left: Fund User Form */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6 lg:col-span-1">
+              <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-blue-600" /> 고객 계좌 자금 충전
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">충전 대상 고객 선택</label>
+                  <select 
+                    value={selectedTargetUserId} 
+                    onChange={(e) => setSelectedTargetUserId(e.target.value)}
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-blue-600"
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.accountNumber})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">충전 금액 (KRW)</label>
+                  <input 
+                    type="number" 
+                    placeholder="예: 500000" 
+                    value={fundingAmount}
+                    onChange={(e) => setFundingAmount(e.target.value)}
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-lg font-bold focus:outline-blue-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-2">관리자 적요 (메모)</label>
+                  <input 
+                    type="text" 
+                    value={fundingMemo}
+                    onChange={(e) => setFundingMemo(e.target.value)}
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium focus:outline-blue-600"
+                  />
+                </div>
+
+                <button 
+                  onClick={handleAdminFundUser}
+                  className="w-full py-4 rounded-2xl bg-blue-600 text-white font-bold text-base shadow-xl shadow-blue-600/30 hover:bg-blue-700 transition-all"
+                >
+                  즉시 계좌 자금 충전하기
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Registered Users List Table */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6 lg:col-span-2">
+              <h2 className="text-xl font-extrabold text-slate-900">전체 등록된 고객 계좌 목록 ({users.length}명)</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-xs font-bold text-slate-400">
+                      <th className="pb-3">고객 성명</th>
+                      <th className="pb-3">연락처</th>
+                      <th className="pb-3">계좌번호</th>
+                      <th className="pb-3 text-right">보유 잔액</th>
+                      <th className="pb-3 text-center">작업</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-sm">
+                    {users.map((u, idx) => (
+                      <tr key={u.id} className="hover:bg-slate-50">
+                        <td className="py-4 font-bold text-slate-800">{u.name}</td>
+                        <td className="py-4 text-slate-500">{u.phone}</td>
+                        <td className="py-4 font-mono text-slate-600">{u.accountNumber}</td>
+                        <td className="py-4 text-right font-extrabold text-blue-600">{formatKRW(u.balance)}</td>
+                        <td className="py-4 text-center">
+                          <button 
+                            onClick={() => { setCurrentUserIndex(idx); setCurrentTab('dashboard'); showToast(`${u.name} 님의 계좌 화면으로 전환되었습니다.`); }}
+                            className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100"
+                          >
+                            이 계좌로 보기
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DASHBOARD VIEW --- */}
+      {currentTab === 'dashboard' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+            <div>
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">HANEUL SECURE ACCOUNT</span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">{activeUser.name} 님의 자산 현황</h1>
+              <p className="text-xs text-slate-400 mt-0.5">계좌번호: {activeUser.accountNumber}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setCurrentTab('admin')} className="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
+                관리자 패널 열기
+              </button>
+              <button onClick={() => setCurrentTab('transfer')} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold shadow-lg shadow-blue-600/20">
+                <Send className="w-4 h-4" /> 송금하기
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-800 text-white p-8 rounded-3xl shadow-xl space-y-6">
+            <span className="text-sm font-medium text-blue-100">주거래 자유예금 가용 잔액</span>
+            <p className="text-4xl font-extrabold">{formatKRW(activeUser.balance)}</p>
+            <div className="pt-4 border-t border-blue-500/30 flex justify-between text-xs text-blue-200">
+              <span>예금자보호법 적용 상품 (최고 5,000만원 보호)</span>
+              <span className="font-bold text-white">실시간 반영됨</span>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-bold text-slate-900">최근 거래 내역 (관리자 충전 내역 포함)</h3>
+            <div className="space-y-3">
+              {transactions.map((tx) => (
+                <div key={tx.id} className="flex justify-between items-center p-3 rounded-2xl bg-slate-50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                      <ArrowDownLeft className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">{tx.counterparty}</p>
+                      <p className="text-[11px] text-slate-400">{tx.date} {tx.time} · {tx.category}</p>
+                    </div>
+                  </div>
+                  <span className="font-bold text-sm text-emerald-600">+{formatKRW(tx.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer className="bg-white border-t border-slate-200 py-12 mt-20 text-center text-xs text-slate-400">
+        <p>{t.copyright}</p>
+      </footer>
+    </div>
+  );
+}
+
