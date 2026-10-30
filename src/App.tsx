@@ -5,7 +5,7 @@ import {
   Compass, HelpCircle, User, ShieldAlert, Building, CheckCircle2, PlusCircle
 } from 'lucide-react';
 
-type Tab = 'home' | 'payment' | 'lifestyle' | 'help' | 'me' | 'admin' | 'transfer';
+type Tab = 'home' | 'payment' | 'lifestyle' | 'help' | 'me' | 'transfer';
 
 interface UserAccount {
   id: string;
@@ -277,7 +277,7 @@ export default function App() {
       )}
 
       {/* --- ADMIN CENTER VIEW --- */}
-      {currentTab === 'admin' && (
+      {window.location.pathname === '/haneul-admin' && (
         <main className="max-w-md mx-auto p-4 space-y-6">
           <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl space-y-6">
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
